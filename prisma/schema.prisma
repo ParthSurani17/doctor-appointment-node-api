@@ -1,0 +1,215 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────
+
+enum Status {
+  ENABLED
+  DISABLED
+}
+
+enum LoginType {
+  EMAIL
+  APPLE
+  GOOGLE
+}
+
+// ADMIN manages doctors/departments/appointments.
+// PATIENT books appointments.
+// (DOCTOR role reserved for a future phase where doctors get their own login.)
+enum UserType {
+  ADMIN
+  PATIENT
+}
+
+enum DayOfWeek {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationTarget {
+  ALL
+  PATIENTS
+}
+
+// ─── USER (Admin / Patient) ───────────────
+
+model User {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  fullName    String?
+  displayName String?
+  profilePic  String?
+  email       String     @unique
+  phone       String?
+  password    String? // bcrypt hash — used by the email/password auth flow
+  userType    UserType?
+  loginType   LoginType?
+  firebaseUId String? // kept for optional future Google/Apple login; not required
+
+  passwordResetTokenHash String?
+  passwordResetExpires   DateTime?
+
+  status    Status   @default(ENABLED) // DISABLED is also used to represent a blocked patient
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  sessions      UserSession[]
+  appointments  Appointment[]
+  notifications UserNotification[]
+
+  @@index([passwordResetTokenHash])
+}
+
+// ─── USER SESSION ─────────────────────────
+
+model UserSession {
+  id                    String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId                String  @db.ObjectId
+  user                  User    @relation(fields: [userId], references: [id])
+  notificationToken     String?
+  isNotificationEnabled Boolean @default(true)
+
+  status    Status   @default(ENABLED)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+// ─── DEPARTMENT (Specialization) ──────────
+
+model Department {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  name        String  @unique
+  description String?
+
+  status    Status   @default(ENABLED)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  doctors Doctor[]
+}
+
+// ─── DOCTOR ────────────────────────────────
+
+model Doctor {
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  photoUrl      String?
+  qualification String?
+  bio           String?
+  experience    Int? // years
+  fee           Float
+
+  departmentId String     @db.ObjectId
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  status    Status   @default(ENABLED)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  availability DoctorAvailability[]
+  appointments Appointment[]
+}
+
+// ─── DOCTOR AVAILABILITY ───────────────────
+
+model DoctorAvailability {
+  id       String    @id @default(auto()) @map("_id") @db.ObjectId
+  doctorId String    @db.ObjectId
+  doctor   Doctor    @relation(fields: [doctorId], references: [id])
+  day      DayOfWeek
+
+  startTime    String // "10:00" (24h)
+  endTime      String // "13:00" (24h)
+  slotDuration Int    @default(30) // minutes
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([doctorId, day, startTime, endTime])
+}
+
+// ─── APPOINTMENT ────────────────────────────
+
+model Appointment {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  patientId String @db.ObjectId
+  patient   User   @relation(fields: [patientId], references: [id])
+
+  doctorId String @db.ObjectId
+  doctor   Doctor @relation(fields: [doctorId], references: [id])
+
+  date     DateTime // appointment date (day only, time kept in timeSlot)
+  timeSlot String // "10:30"
+  reason   String?
+
+  status    AppointmentStatus @default(PENDING)
+  isDeleted Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([doctorId, date])
+  @@index([patientId])
+}
+
+// ─── TESTIMONIAL (shown on patient-facing homepage) ─
+
+model Testimonial {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  role       String
+  quote      String
+  avatarSeed String?
+
+  createdAt DateTime @default(now())
+}
+
+// ─── NOTIFICATION (optional / bonus feature) ─
+
+model Notification {
+  id       String             @id @default(auto()) @map("_id") @db.ObjectId
+  title    String
+  body     String
+  target   NotificationTarget @default(ALL)
+  imageUrl String?
+
+  createdAt DateTime @default(now())
+
+  userNotifications UserNotification[]
+}
+
+model UserNotification {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+
+  notificationId String       @db.ObjectId
+  notification   Notification @relation(fields: [notificationId], references: [id])
+
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
