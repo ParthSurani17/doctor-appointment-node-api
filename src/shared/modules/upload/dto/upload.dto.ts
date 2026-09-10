@@ -8,6 +8,7 @@ export enum FILE_TYPE {
 }
 
 export enum RESOURCE_TYPE {
+  DOCTOR = 'DOCTOR',
   USER = 'USER',
   TRIP = 'TRIP',
   TRIP_ALBUM = 'TRIP_ALBUM',

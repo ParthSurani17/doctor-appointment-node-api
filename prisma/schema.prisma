@@ -75,6 +75,7 @@ model User {
   sessions      UserSession[]
   appointments  Appointment[]
   notifications UserNotification[]
+  doctorReviews DoctorReview[]
 
   @@index([passwordResetTokenHash])
 }
@@ -114,9 +115,11 @@ model Department {
 model Doctor {
   id            String  @id @default(auto()) @map("_id") @db.ObjectId
   name          String
+  email         String?
   photoUrl      String?
   qualification String?
   bio           String?
+  hospital      String?
   experience    Int? // years
   fee           Float
 
@@ -130,6 +133,7 @@ model Doctor {
 
   availability DoctorAvailability[]
   appointments Appointment[]
+  reviews      DoctorReview[]
 }
 
 // ─── DOCTOR AVAILABILITY ───────────────────
@@ -162,9 +166,14 @@ model Appointment {
   doctorId String @db.ObjectId
   doctor   Doctor @relation(fields: [doctorId], references: [id])
 
-  date     DateTime // appointment date (day only, time kept in timeSlot)
-  timeSlot String // "10:30"
-  reason   String?
+  date          DateTime // appointment date (day only, time kept in timeSlot)
+  timeSlot      String // "10:30"
+  reason        String?
+  patientName   String?
+  patientEmail  String?
+  patientPhone  String?
+  patientAge    Int?
+  patientGender String?
 
   status    AppointmentStatus @default(PENDING)
   isDeleted Boolean           @default(false)
@@ -185,6 +194,21 @@ model Testimonial {
   avatarSeed String?
 
   createdAt DateTime @default(now())
+}
+
+model DoctorReview {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  doctorId  String   @db.ObjectId
+  doctor    Doctor   @relation(fields: [doctorId], references: [id])
+  patientId String   @db.ObjectId
+  patient   User     @relation(fields: [patientId], references: [id])
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([doctorId, patientId])
+  @@index([doctorId])
 }
 
 // ─── NOTIFICATION (optional / bonus feature) ─

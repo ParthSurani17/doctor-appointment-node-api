@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { AppointmentStatus } from '@prisma/client';
-import { IsIn, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
+import { IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
 
 export class BookAppointmentDto {
   @ApiProperty({ description: 'Doctor id to book with' })
@@ -22,6 +22,33 @@ export class BookAppointmentDto {
   @IsString()
   @IsOptional()
   reason?: string;
+
+  @ApiProperty({ required: false, example: 'Aarav Shah' })
+  @IsOptional()
+  @IsString()
+  patientName?: string;
+
+  @ApiProperty({ required: false, example: 'aarav@example.com' })
+  @IsOptional()
+  @IsEmail()
+  patientEmail?: string;
+
+  @ApiProperty({ required: false, example: '9876543210' })
+  @IsOptional()
+  @Matches(/^\+?[0-9]{7,15}$/, { message: 'patientPhone must be a valid phone number' })
+  patientPhone?: string;
+
+  @ApiProperty({ required: false, example: 32 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(150)
+  patientAge?: number;
+
+  @ApiProperty({ required: false, enum: ['Female', 'Male', 'Other'] })
+  @IsOptional()
+  @IsIn(['Female', 'Male', 'Other'])
+  patientGender?: string;
 }
 
 export class AppointmentListQueryDto {

@@ -5,6 +5,7 @@ import { DoctorCoreModule } from '../../../core/doctor-core/doctor-core.module';
 import { DoctorAvailabilityCoreModule } from '../../../core/doctor-availability-core/doctor-availability-core.module';
 import { DepartmentCoreModule } from '../../../core/department-core/department-core.module';
 import { AuthModule } from '../../client/auth/auth.module';
+import { UploadModule } from '../../../shared/modules/upload/upload.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { AuthModule } from '../../client/auth/auth.module';
     DoctorAvailabilityCoreModule,
     DepartmentCoreModule,
     AuthModule,
+    UploadModule,
   ],
   controllers: [DoctorController],
   providers: [DoctorService],

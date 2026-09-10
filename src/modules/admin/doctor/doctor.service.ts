@@ -12,6 +12,8 @@ import {
   DoctorAvailabilityMessages,
 } from '../../../shared/keys/appointment.keys';
 import { BaseQueryCoreDto } from '../../../core/base-query-core/dto';
+import { UploadService } from '../../../shared/modules/upload/upload.service';
+import { RESOURCE_TYPE } from '../../../shared/modules/upload/dto/upload.dto';
 
 @Injectable()
 export class DoctorService {
@@ -19,6 +21,7 @@ export class DoctorService {
     private doctorCoreService: DoctorCoreService,
     private doctorAvailabilityCoreService: DoctorAvailabilityCoreService,
     private departmentCoreService: DepartmentCoreService,
+    private uploadService: UploadService,
   ) {}
 
   async create(dto: CreateDoctorDto) {
@@ -64,6 +67,19 @@ export class DoctorService {
       where: { id },
       data: { isDeleted: true, status: 'DISABLED' },
     });
+  }
+
+  async uploadPhoto(id: string, file: any) {
+    await this.doctorCoreService.checkId({ where: { id } });
+    const uploaded = await this.uploadService.saveLocalFile({
+      file,
+      resourceType: RESOURCE_TYPE.DOCTOR,
+    });
+    const doctor = await this.doctorCoreService.update({
+      where: { id },
+      data: { photoUrl: uploaded.url },
+    });
+    return { doctor, ...uploaded };
   }
 
   // ─── Availability ───────────────────────

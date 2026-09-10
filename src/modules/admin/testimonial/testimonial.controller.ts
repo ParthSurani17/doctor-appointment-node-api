@@ -6,8 +6,8 @@ import { BaseQueryCoreDto } from '../../../core/base-query-core/dto';
 import { AdminLoginJwtGuard } from '../auth/guards/admin-login-jwt.guard';
 
 @ApiTags('Admin: Testimonial')
-// @ApiBearerAuth()
-// @UseGuards(AdminLoginJwtGuard)
+@ApiBearerAuth()
+@UseGuards(AdminLoginJwtGuard)
 @Controller('admin/testimonials')
 export class TestimonialController {
   constructor(private testimonialService: TestimonialService) {}

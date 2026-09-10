@@ -5,10 +5,14 @@ import { UserMessages } from '../../../shared/keys/user.keys';
 
 import { BaseQueryCoreService } from '../../../core/base-query-core';
 import { UserType } from '@prisma/client';
+import { UserNotificationCoreService } from '../../../core/user-notification-core';
 
 @Injectable()
 export class UserService {
-  constructor(private userCoreService: UserCoreService) {}
+  constructor(
+    private userCoreService: UserCoreService,
+    private userNotificationCoreService: UserNotificationCoreService,
+  ) {}
   /**
    * Get all users
    * @param param
@@ -47,5 +51,21 @@ export class UserService {
     const user = await this.userCoreService.update({ where: { id: userId }, data });
     const { password, passwordResetTokenHash, passwordResetExpires, ...safe } = user as any;
     return safe;
+  }
+
+  async getMyNotifications(userId: string) {
+    return this.userNotificationCoreService.findMany({
+      where: { userId },
+      include: { notification: true },
+      orderBy: { createdAt: 'desc' },
+    } as any);
+  }
+
+  async markMyNotificationsRead(userId: string) {
+    await this.userNotificationCoreService.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true },
+    });
+    return { status: true, message: 'All notifications marked as read.' };
   }
 }

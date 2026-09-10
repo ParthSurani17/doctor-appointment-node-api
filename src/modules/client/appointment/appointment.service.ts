@@ -84,6 +84,11 @@ export class AppointmentService {
         date,
         timeSlot: dto.timeSlot,
         reason: dto.reason,
+        patientName: dto.patientName,
+        patientEmail: dto.patientEmail,
+        patientPhone: dto.patientPhone,
+        patientAge: dto.patientAge,
+        patientGender: dto.patientGender,
       },
     });
 
@@ -91,6 +96,9 @@ export class AppointmentService {
     // shouldn't fail the booking itself (already created), just get logged.
     this.sendBookingEmail(patientId, doctor, dto).catch((err) =>
       this.logger.error(`Failed to send booking email: ${err.message}`),
+    );
+    this.sendDoctorBookingEmail(appointment.id, doctor, dto).catch((err) =>
+      this.logger.error(`Failed to send doctor booking email: ${err.message}`),
     );
     this.notifyAdminsOfBooking(patientId, doctor, dto).catch((err) =>
       this.logger.error(`Failed to create admin notification: ${err.message}`),
@@ -118,6 +126,14 @@ export class AppointmentService {
     return this.appointmentCoreService.findMany({
       where,
       orderBy: { date: filter === 'past' ? 'desc' : 'asc' },
+      include: {
+        doctor: {
+          include: { department: true },
+        },
+        patient: {
+          select: { id: true, fullName: true, email: true, phone: true },
+        },
+      },
     } as any);
   }
 
@@ -170,6 +186,32 @@ export class AppointmentService {
       date: dto.date,
       timeSlot: dto.timeSlot,
       fee: doctor.fee,
+    });
+  }
+
+  private async sendDoctorBookingEmail(
+    appointmentId: string,
+    doctor: {
+      id: string;
+      name: string;
+      email?: string | null;
+      departmentId: string;
+    },
+    dto: BookAppointmentDto,
+  ) {
+    if (!doctor.email) return;
+
+    const department = await this.departmentCoreService
+      .findFirst({ where: { id: doctor.departmentId } })
+      .catch(() => null);
+
+    await this.mailService.sendDoctorBookingNotification({
+      to: doctor.email,
+      doctorName: doctor.name,
+      appointmentId,
+      departmentName: department?.name,
+      date: dto.date,
+      timeSlot: dto.timeSlot,
     });
   }
 

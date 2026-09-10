@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as fs from 'fs';
 import * as path from 'path';
+import express from 'express';
 import admin from 'firebase-admin';
 import { swaggerLoader } from './shared/swagger';
 import { PrismaService } from './shared/modules/prisma/prisma.service';
@@ -10,18 +11,25 @@ import helmet from 'helmet';
 import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   const prismaService = app.get(PrismaService);
   await prismaService.enableShutdownHooks(app);
 
   app.use(helmet());
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   swaggerLoader(app);
 
+  const clientOrigins = configService
+    .get<string>('CORS_ORIGIN', 'http://localhost:5173,http://localhost:5174')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: configService.get('*'),
+    origin: clientOrigins,
     credentials: true,
   });
 

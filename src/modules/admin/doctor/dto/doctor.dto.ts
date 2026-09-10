@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { DayOfWeek } from '@prisma/client';
 import {
+  IsEmail,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -17,6 +18,11 @@ export class CreateDoctorDto {
   @IsNotEmpty()
   name: string;
 
+  @ApiProperty({ example: 'doctor@example.com', required: false })
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
@@ -31,6 +37,11 @@ export class CreateDoctorDto {
   @IsString()
   @IsOptional()
   bio?: string;
+
+  @ApiProperty({ example: 'MediBook City Clinic', required: false })
+  @IsString()
+  @IsOptional()
+  hospital?: string;
 
   @ApiProperty({ example: 8, required: false })
   @IsInt()
@@ -56,6 +67,11 @@ export class UpdateDoctorDto {
   name?: string;
 
   @ApiProperty({ required: false })
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
   photoUrl?: string;
@@ -69,6 +85,11 @@ export class UpdateDoctorDto {
   @IsString()
   @IsOptional()
   bio?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  hospital?: string;
 
   @ApiProperty({ required: false })
   @IsInt()

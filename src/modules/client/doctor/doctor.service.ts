@@ -4,6 +4,7 @@ import { DoctorAvailabilityCoreService } from '../../../core/doctor-availability
 import { AppointmentCoreService } from '../../../core/appointment-core';
 import { BaseQueryCoreDto } from '../../../core/base-query-core/dto';
 import { DoctorMessages } from '../../../shared/keys/appointment.keys';
+import { CreateDoctorReviewDto } from './dto/doctor-review.dto';
 import {
   dayOfWeekFromDate,
   generateSlotsForDay,
@@ -24,14 +25,57 @@ export class DoctorService {
     const baseWhere: any = { isDeleted: false, status: 'ENABLED' };
     if (departmentId) baseWhere.departmentId = departmentId;
 
-    return this.doctorCoreService.findPaginate(rest, baseWhere);
+    const page = await this.doctorCoreService.findPaginate(rest, baseWhere);
+    return {
+      ...page,
+      list: await Promise.all(page.list.map((doctor) => this.withReviewStats(doctor))),
+    };
   }
 
   async findOne(id: string) {
-    return this.doctorCoreService.findUniqueIncludes(
+    const doctor = await this.doctorCoreService.findUniqueIncludes(
       { where: { id } },
       { include: ['department'] },
     );
+    return this.withReviewStats(doctor);
+  }
+
+  async reviews(doctorId: string) {
+    await this.doctorCoreService.findUnique({ where: { id: doctorId } });
+    return this.doctorCoreService.prisma.doctorReview.findMany({
+      where: { doctorId },
+      include: { patient: { select: { fullName: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createReview(doctorId: string, patientId: string, dto: CreateDoctorReviewDto) {
+    const completedAppointment = await this.appointmentCoreService.findFirst({
+      where: { doctorId, patientId, status: 'COMPLETED', isDeleted: false },
+    });
+    if (!completedAppointment) {
+      throw new BadRequestException('You can review a doctor only after a completed appointment.');
+    }
+
+    const existing = await this.doctorCoreService.prisma.doctorReview.findUnique({
+      where: { doctorId_patientId: { doctorId, patientId } },
+    });
+    if (existing) {
+      throw new BadRequestException('You have already reviewed this doctor.');
+    }
+
+    return this.doctorCoreService.prisma.doctorReview.create({
+      data: { doctorId, patientId, rating: dto.rating, comment: dto.comment },
+    });
+  }
+
+  private async withReviewStats(doctor: any) {
+    const stats = await this.doctorCoreService.prisma.doctorReview.aggregate({
+      where: { doctorId: doctor.id },
+      _avg: { rating: true },
+      _count: { id: true },
+    });
+    return { ...doctor, rating: stats._avg.rating || 0, reviewCount: stats._count.id };
   }
 
   /**

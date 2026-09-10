@@ -47,4 +47,16 @@ export class UserController {
   ) {
     return this.userService.updateMe(session.user.id, dto);
   }
+
+  @Get('me/notifications')
+  @ApiOperation({ summary: 'List my notifications' })
+  async getMyNotifications(@GetUserSession() session: UserSessionType) {
+    return this.userService.getMyNotifications(session.user.id);
+  }
+
+  @Patch('me/notifications/read-all')
+  @ApiOperation({ summary: 'Mark all my notifications as read' })
+  async markMyNotificationsRead(@GetUserSession() session: UserSessionType) {
+    return this.userService.markMyNotificationsRead(session.user.id);
+  }
 }

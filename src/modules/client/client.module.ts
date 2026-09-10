@@ -4,6 +4,7 @@ import { AuthModule } from './auth/auth.module';
 import { DepartmentModule } from './department/department.module';
 import { DoctorModule } from './doctor/doctor.module';
 import { AppointmentModule } from './appointment/appointment.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { AppointmentModule } from './appointment/appointment.module';
     DepartmentModule,
     DoctorModule,
     AppointmentModule,
+    UserModule,
   ],
   controllers: [],
   providers: [],

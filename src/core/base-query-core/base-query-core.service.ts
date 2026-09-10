@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { BaseQueryCoreDto } from './dto/base-query-core.dto';
 import * as _ from 'lodash';
 
@@ -6,6 +6,16 @@ import * as _ from 'lodash';
 export class BaseQueryCoreService {
   generatePrismaQuery(query: BaseQueryCoreDto = {}) {
     const tempQuery: any = { ...query };
+    // Intersection-typed controller queries can arrive as raw URL strings.
+    for (const field of ['skip', 'take']) {
+      if (tempQuery[field] !== undefined) {
+        const value = Number(tempQuery[field]);
+        if (!Number.isSafeInteger(value) || value < 0) {
+          throw new BadRequestException(`${field} must be a non-negative integer`);
+        }
+        tempQuery[field] = value;
+      }
+    }
     if (typeof tempQuery?.orderBy === 'string') {
       tempQuery.orderBy = [tempQuery?.orderBy];
     }
@@ -49,7 +59,7 @@ export class BaseQueryCoreService {
     if (tempQuery?.searchColumn?.length > 0 && tempQuery?.search?.length > 0) {
       const formattedSearchQry = this.formatSearchQueryArray(
         tempQuery.searchColumn.sort(),
-        { contains: tempQuery?.search },
+        { contains: tempQuery?.search, mode: 'insensitive' },
       );
 
       tempQuery['where'] = formattedSearchQry;

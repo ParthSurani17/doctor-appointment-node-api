@@ -6,7 +6,7 @@ doctor appointment system.
 - **Admin** manages departments, doctors (+ weekly availability), all
   appointments, and patients (block/unblock).
 - **Patient** registers with email/password, browses doctors, books/cancels
-  appointments, and gets emailed on booking + status changes.
+  appointments, and patient/doctor emails are sent when an appointment is booked.
 - Doctor-side login is out of scope for this phase — admin manages doctors
   on their behalf for now.
 
@@ -148,15 +148,25 @@ DELETE /admin/departments/:id
 
 ### Admin: Doctors
 ```
-POST   /admin/doctors
+POST   /admin/doctors                    { name, email?, photoUrl?, qualification?, bio?, experience?, fee, departmentId }
 GET    /admin/doctors?departmentId=...
 GET    /admin/doctors/:id
-PATCH  /admin/doctors/:id
+PATCH  /admin/doctors/:id                { name?, email?, photoUrl?, qualification?, bio?, experience?, fee?, departmentId? }
 DELETE /admin/doctors/:id
 POST   /admin/doctors/:id/availability      { day, startTime, endTime, slotDuration }
 GET    /admin/doctors/:id/availability
 DELETE /admin/doctors/availability/:availabilityId
 ```
+
+### Uploads
+```
+POST /upload/local?resourceType=DOCTOR       form-data: file=<image>
+GET  /uploads/doctor/<fileName>
+```
+Use the returned `url` from `POST /upload/local` as the doctor's `photoUrl`
+when creating or updating a doctor. Files are stored locally under
+`uploads/doctor`. Set `APP_URL` if your backend is not running at
+`http://localhost:3000`.
 
 ### Admin: Appointments
 ```
@@ -193,7 +203,7 @@ GET /doctors/:id/available-slots?date=YYYY-MM-DD
 
 ### Patient: Appointments (requires patient login)
 ```
-POST /appointments                          { doctorId, date, timeSlot, reason? }   // emails confirmation
+POST /appointments                          { doctorId, date, timeSlot, reason? }   // emails patient + doctor confirmation
 GET  /appointments/me?filter=upcoming|past|cancelled|all
 POST /appointments/:id/cancel
 ```
@@ -209,7 +219,8 @@ POST /appointments/:id/cancel
    (`PENDING`/`CONFIRMED`) appointment as unavailable.
 3. `POST /appointments` re-validates the slot is actually offered and not
    already taken before creating the appointment (status starts as
-   `PENDING`), then emails the patient a confirmation.
+   `PENDING`), then emails the patient a confirmation and emails the doctor
+   when the doctor profile has an `email`.
 4. When admin later confirms/cancels/completes it (`PATCH
    /admin/appointments/:id/status`), the patient gets another email.
 

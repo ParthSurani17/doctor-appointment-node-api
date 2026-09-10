@@ -22,6 +22,12 @@ export class MailService {
       secure: Number(MAIL_PORT) === 465,
       auth: { user: MAIL_USER, pass: MAIL_PASS },
     });
+
+    void this.transporter.verify().then(() => {
+      this.logger.log(`SMTP connection ready (${MAIL_HOST}:${MAIL_PORT || 587}).`);
+    }).catch((error) => {
+      this.logger.error(`SMTP connection failed: ${error.message}`);
+    });
   }
 
   async sendMail(params: { to: string; subject: string; html: string }) {
@@ -77,6 +83,41 @@ export class MailService {
     `;
 
     return this.sendMail({ to, subject: 'Your appointment has been booked', html });
+  }
+
+  async sendDoctorBookingNotification(params: {
+    to: string;
+    doctorName: string;
+    appointmentId: string;
+    departmentName?: string;
+    date: string;
+    timeSlot: string;
+  }) {
+    const {
+      to,
+      doctorName,
+      appointmentId,
+      departmentName,
+      date,
+      timeSlot,
+    } = params;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto;">
+        <h2 style="color:#3366FF;">New Appointment Request</h2>
+        <p>Hi ${doctorName},</p>
+        <p>A new appointment has been booked with you. Please check the clinic dashboard for patient details.</p>
+        <table style="width:100%; border-collapse: collapse; margin: 16px 0;">
+          <tr><td style="padding:6px 0; color:#666;">Appointment ID</td><td style="padding:6px 0; font-weight:600;">${appointmentId}</td></tr>
+          ${departmentName ? `<tr><td style="padding:6px 0; color:#666;">Department</td><td style="padding:6px 0;">${departmentName}</td></tr>` : ''}
+          <tr><td style="padding:6px 0; color:#666;">Date</td><td style="padding:6px 0;">${date}</td></tr>
+          <tr><td style="padding:6px 0; color:#666;">Time</td><td style="padding:6px 0;">${timeSlot}</td></tr>
+        </table>
+        <p>The appointment status is currently <strong>Pending</strong>.</p>
+      </div>
+    `;
+
+    return this.sendMail({ to, subject: 'New appointment booked with you', html });
   }
 
   async sendAppointmentStatusUpdate(params: {
