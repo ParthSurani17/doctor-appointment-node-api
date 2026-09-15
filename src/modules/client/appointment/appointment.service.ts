@@ -61,15 +61,14 @@ export class AppointmentService {
     }
 
     // Confirm nobody has already booked this exact slot.
-    // NOTE: this is a check-then-create, not an atomic transaction (MongoDB
-    // transactions require a replica set). Fine for a local college demo;
-    // in production you'd want a unique index / transaction here.
+    // The database unique index also protects concurrent booking requests.
     const conflict = await this.appointmentCoreService.findFirst({
       where: {
         doctorId: dto.doctorId,
         date: { gte: date, lt: nextDay(date) },
         timeSlot: dto.timeSlot,
-        status: { in: ['PENDING', 'CONFIRMED'] },
+        status: { in: ['PENDING', 'CONFIRMED', 'COMPLETED'] },
+        isDeleted: false,
       },
     }).catch(() => null);
 

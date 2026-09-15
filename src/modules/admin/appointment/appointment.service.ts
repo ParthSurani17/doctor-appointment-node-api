@@ -115,7 +115,8 @@ export class AppointmentService {
           doctorId,
           date: { gte: date, lt: nextDay(date) },
           timeSlot: dto.timeSlot,
-          status: { in: ['PENDING', 'CONFIRMED'] },
+          status: { in: ['PENDING', 'CONFIRMED', 'COMPLETED'] },
+          isDeleted: false,
         },
       })
       .catch(() => null);

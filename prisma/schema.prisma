@@ -157,6 +157,7 @@ model DoctorAvailability {
 
 // ─── APPOINTMENT ────────────────────────────
 
+// Partial unique doctor/date/timeSlot index is installed by PrismaService.onModuleInit.
 model Appointment {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 

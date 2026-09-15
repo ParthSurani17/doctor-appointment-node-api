@@ -107,7 +107,8 @@ export class DoctorService {
       where: {
         doctorId,
         date: { gte: date, lt: nextDay(date) },
-        status: { in: ['PENDING', 'CONFIRMED'] },
+        status: { in: ['PENDING', 'CONFIRMED', 'COMPLETED'] },
+        isDeleted: false,
       },
     });
     const bookedSlots = new Set(existingAppointments.map((a) => a.timeSlot));
