@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { dayOfWeekFromDate, generateSlotsForDay, nextDay, startOfDay } from '../../../shared/libs/slot-generator';
 import { DoctorCoreService } from '../../../core/doctor-core';
 import { DoctorAvailabilityCoreService } from '../../../core/doctor-availability-core';
 import { DepartmentCoreService } from '../../../core/department-core';
@@ -82,7 +83,7 @@ export class DoctorService {
     return { doctor, ...uploaded };
   }
 
-  // ─── Availability ───────────────────────
+  // â”€â”€â”€ Availability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   async addAvailability(doctorId: string, dto: CreateDoctorAvailabilityDto) {
     await this.doctorCoreService.checkId({ where: { id: doctorId } });
@@ -113,6 +114,58 @@ export class DoctorService {
     return this.doctorAvailabilityCoreService.findMany({
       where: { doctorId, isActive: true },
     });
+  }
+
+  async generateSlots() {
+    const prisma = this.doctorCoreService.prisma;
+    const now = new Date();
+    const dateLabel = (date: Date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const today = startOfDay(dateLabel(now));
+    const dates: Date[] = [];
+    for (let date = today; dates.length < 30; date = nextDay(date)) dates.push(date);
+    const doctors = await prisma.doctor.findMany({
+      where: { isDeleted: false, status: 'ENABLED' },
+      select: { id: true, name: true, availability: { where: { isActive: true } } },
+    });
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        doctorId: { in: doctors.map((doctor) => doctor.id) },
+        date: { gte: today, lt: nextDay(dates[dates.length - 1]) },
+        status: { in: ['PENDING', 'CONFIRMED', 'COMPLETED'] },
+        isDeleted: false,
+      },
+      select: { doctorId: true, date: true, timeSlot: true },
+    });
+    const booked = new Set(appointments.map((appointment) =>
+      `${appointment.doctorId}/${dateLabel(appointment.date)}/${appointment.timeSlot}`,
+    ));
+    const results = doctors.map((doctor) => {
+      const schedule = dates.map((date) => {
+        const label = dateLabel(date);
+        const windows = doctor.availability.filter((window) => window.day === dayOfWeekFromDate(date));
+        const slots = [...new Set(generateSlotsForDay(windows))]
+          .filter((time) => new Date(`${label}T${time}:00`) > now)
+          .map((time) => ({ time, isBooked: booked.has(`${doctor.id}/${label}/${time}`) }));
+        return { date: label, slots };
+      });
+      return {
+        doctorId: doctor.id,
+        doctorName: doctor.name,
+        status: doctor.availability.length ? 'GENERATED' : 'NO_AVAILABILITY',
+        availableSlots: schedule.reduce((sum, day) => sum + day.slots.filter((slot) => !slot.isBooked).length, 0),
+        schedule,
+      };
+    });
+    return {
+      fromDate: dateLabel(today),
+      toDate: dateLabel(dates[dates.length - 1]),
+      doctorsChecked: doctors.length,
+      doctorsWithoutAvailability: results.filter((doctor) => doctor.status === 'NO_AVAILABILITY').length,
+      recurring: true,
+      doctors: results,
+      message: 'Slots calculated from each doctor?s saved weekly availability for the next 30 days. No schedules or bookings were changed. Weekly availability continues beyond this date range.',
+    };
   }
 
   async removeAvailability(availabilityId: string) {

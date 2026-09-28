@@ -36,6 +36,15 @@ export class DoctorController {
     return this.doctorService.create(dto);
   }
 
+  @Post('generate-slots')
+  @ApiOperation({
+    summary: 'Generate upcoming slots using each doctor?s saved availability',
+    description: 'Adds Mondayâ€“Saturday hours 10:00â€“13:00 and 17:00â€“20:00 with 30-minute slots. Existing configured days and bookings are preserved. These hours repeat every week without an expiry date. No request body is required.',
+  })
+  generateSlots() {
+    return this.doctorService.generateSlots();
+  }
+
   @Post(':id/photo')
   @UseInterceptors(
     FileInterceptor('file', {
